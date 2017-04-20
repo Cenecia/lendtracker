@@ -53,27 +53,27 @@
 
   class App
   {
-    public function register()
-    {
-      if(isset($_POST['username'])) {
-        $username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
-        $pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
-        $password = password_hash($pwsalt.$_POST['password'], PASSWORD_DEFAULT);
+		public function register()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
+				$password = password_hash($pwsalt.$_POST['password'], PASSWORD_DEFAULT);
 
-        $pdo = getPdo();
-        $stmt = $pdo->prepare('INSERT INTO user (username, password, pwsalt) VALUES (?,?,?)');
-        $stmt->execute([$username, $password, $pwsalt]);
+				$pdo = getPdo();
+				$stmt = $pdo->prepare('INSERT INTO user (username, password, pwsalt) VALUES (?,?,?)');
+				$stmt->execute([$username, $password, $pwsalt]);
 
-        $data['message'] = "account created successfully";
+				$data['message'] = "account created successfully";
 
-        echo json_encode($data);
-      }
-    }
+				echo json_encode($data);
+			}
+		}
 		
 		public function reloadAll()
 		{
-      if(isset($_REQUEST['token'])) {
-        $userid = filter_var($_REQUEST["user"], FILTER_VALIDATE_INT);
+			if(isset($_REQUEST['token'])) {
+				$userid = filter_var($_REQUEST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_REQUEST['token'], FILTER_SANITIZE_STRING);
 				if($this->checkToken($userid, $token)) {
 					$pdo = getPdo();
@@ -117,54 +117,54 @@
 		}
 		
 		public function loginApp()
-    {
+		{
 			if(isset($_POST['username'])) {
-        $username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
-        $pdo = getPdo();
-        $userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-        if(isset($userid[0]) && $userid[0] > 0) {
-          $user = $userid[0];
-          $password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-					
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if(isset($userid[0]) && $userid[0] > 0) {
+					$user = $userid[0];
+					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
+
 					$Security = new Security();
-					
-          if($Security->checkLogin($user, $password)) {
+
+					if($Security->checkLogin($user, $password)) {
 						$Security->newToken($user, $password);
 						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', confirmed as 'transactionConfirmed', createDate as 'transactionDate', description FROM transaction WHERE userID = $user;")->fetchAll();
-            $loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach($loans as $loan) {
+						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
+
+						foreach($loans as $loan) {
 							$data['transactions'][$loan['transactionId']]['loan'] = json_encode($loan);
 							$data['transactions'][$loan['transactionId']]['remaining'] = $loan['initialAmount'];
 							$data['transactions'][$loan['transactionId']]['paid'] = 0;
-            }
-            
-            foreach($loanPaymentsResults as $payment) {
+						}
+
+						foreach($loanPaymentsResults as $payment) {
 							$data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
 							$data['transactions'][$payment['transactionId']]['remaining'] -= $payment['paymentAmount'];
 							$data['transactions'][$payment['transactionId']]['paid'] += $payment['paymentAmount'];
-            }
-            
-            $payments = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', confirmed as 'transactionConfirmed', createDate as 'transactionDate' FROM transaction WHERE otherUserID = $user;")->fetchAll();
-            $paymentPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.otherUserID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach($payments as $pay) {
-              $data['payments'][$pay['transactionId']]['loan'] = json_encode($pay);
+						}
+
+						$payments = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', confirmed as 'transactionConfirmed', createDate as 'transactionDate' FROM transaction WHERE otherUserID = $user;")->fetchAll();
+						$paymentPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.otherUserID = $user;")->fetchAll(PDO::FETCH_ASSOC);
+
+						foreach($payments as $pay) {
+							$data['payments'][$pay['transactionId']]['loan'] = json_encode($pay);
 							$data['payments'][$pay['transactionId']]['remaining'] = $pay['initialAmount'];
 							$data['payments'][$pay['transactionId']]['paid'] = 0;
-            }
-            
-            foreach($paymentPaymentsResults as $payPay) {
-              $data['payments'][$payPay['transactionId']]['payments'][$payPay['paymentId']] = json_encode($payPay);
+						}
+
+						foreach($paymentPaymentsResults as $payPay) {
+							$data['payments'][$payPay['transactionId']]['payments'][$payPay['paymentId']] = json_encode($payPay);
 							$data['payments'][$payPay['transactionId']]['remaining'] -= $payPay['paymentAmount'];
 							$data['payments'][$payPay['transactionId']]['paid'] += $payPay['paymentAmount'];
-            }
-						
+						}
+
 						$contacts = $pdo->query("SELECT u.id, u.username, uc.accepted FROM userContact uc JOIN user u ON uc.contactUserID = u.id WHERE uc.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-						
+
 						$data['contacts'] = json_encode($contacts);
-            $data['token'] = $this->Security($user, $password);
-            $data['message'] = "success";
+						$data['token'] = $this->Security($user, $password);
+						$data['message'] = "success";
 						$data['userid'] = $user;
 					} else {
 						$data['message'] = "fail";
@@ -173,62 +173,62 @@
 					$data['message'] = "fail";
 				}
 			}
-			
+
 			echo json_encode($data);
-    }
+		}
 
-    public function viewTransactions()
-    {
-      if(isset($_POST['username'])) {
-        $username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
-        $pdo = getPdo();
-        $userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-        if($userid[0] > 0) {
-          $user = $userid[0];
-          $password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
+		public function viewTransactions()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
 
-          if($this->checkLogin($user, $password)) {
+					if($this->checkLogin($user, $password)) {
 
-            $loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
-            $loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach($loans as $loan) {
-              $data['transactions'][$loan['transactionId']]['loan'] = json_encode($loan);
-            }
-            
-            foreach($loanPaymentsResults as $payment) {
-              $data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
-            }
-            
-            $payments = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE otherUserID = $user;")->fetchAll();
-            $paymentPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.otherUserID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-            
-            foreach($payments as $pay) {
-              $data['payments'][$pay['transactionId']]['loan'] = json_encode($pay);
-            }
-            
-            foreach($paymentPaymentsResults as $payPay) {
-              $data['payments'][$payPay['transactionId']]['payments'][$payPay['paymentId']] = json_encode($payPay);
-            }
-            
-            $data['message'] = "success";
-          }
-          else {
-            $data['message'] = "wrong key";
-          }
+						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
+						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
 
-        } else {
-          $data['message'] = 'View transactions:';
-        }
-        
-        echo json_encode($data);
-      }
-    }
+						foreach($loans as $loan) {
+							$data['transactions'][$loan['transactionId']]['loan'] = json_encode($loan);
+						}
+
+						foreach($loanPaymentsResults as $payment) {
+							$data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
+						}
+
+						$payments = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE otherUserID = $user;")->fetchAll();
+						$paymentPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.otherUserID = $user;")->fetchAll(PDO::FETCH_ASSOC);
+
+						foreach($payments as $pay) {
+							$data['payments'][$pay['transactionId']]['loan'] = json_encode($pay);
+						}
+
+						foreach($paymentPaymentsResults as $payPay) {
+							$data['payments'][$payPay['transactionId']]['payments'][$payPay['paymentId']] = json_encode($payPay);
+						}
+
+						$data['message'] = "success";
+					}
+					else {
+						$data['message'] = "wrong key";
+					}
+
+				} else {
+					$data['message'] = 'View transactions:';
+				}
+
+				echo json_encode($data);
+			}
+		}
     
-    public function confirmTransaction()
-    {
-      if(isset($_POST['token'])) {
-        $userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+		public function confirmTransaction()
+		{
+			if(isset($_POST['token'])) {
+				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
 				if($this->checkToken($userid, $token)) {
 					$pdo = getPdo();
@@ -269,19 +269,19 @@
 				} else {
 					$data["message"] = "token fail";
 				}
-          
-      }
+
+			}
 			else {
 				$data["message"] = "fail 2";
 			}
-			
+
 			echo $data['message'];
-    }
+		}
     
-    public function createLoan()
-    {
-      if(isset($_POST['token'])) {
-        $userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+		public function createLoan()
+		{
+			if(isset($_POST['token'])) {
+				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
 				if($this->checkToken($userid, $token)) {
 					$lender = $userid;
@@ -298,7 +298,7 @@
 					//else {
 						//$data['message'] = "invalid borrower";
 					//}
-      	}
+				}
 				else {
 					$data["message"] = "bad token";
 				}
@@ -306,12 +306,12 @@
 			else {
 				$data["message"] = "bad token";
 			}
-    }
+		}
     
-    public function createPayment()
-    {
-      if(isset($_POST['token'])) {
-        $userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+		public function createPayment()
+		{
+			if(isset($_POST['token'])) {
+				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				if($this->checkToken($userid, $token)) {
 					$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 					$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
@@ -325,16 +325,16 @@
 				else {
 					$data['message'] = "bad token";
 				}
-      }
+			}
 			else {
 				$data['message'] = "bad token";
 			}
-    }
+		}
 		
-    public function addContact()
-    {
-      if(isset($_POST['token'])) {
-        $userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+		public function addContact()
+		{
+			if(isset($_POST['token'])) {
+				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
 				if($this->checkToken($userid, $token)) {
 					$contactUser = filter_var($_POST['contact'], FILTER_VALIDATE_INT);
@@ -349,43 +349,43 @@
 				else {
 					$data['message'] = "bad token";
 				}
-      }
+			}
 			else {
 				$data['message'] = "bad token";
 			}
-    }
+		}
 		
 		public function contactList()
 		{
 			if(isset($_POST['token'])) {
-        $userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
 				if($this->checkToken($userid, $token)) {
 					$pdo = getPdo();
 					$results = $pdo->query("SELECT username, accepted FROM userContact uc JOIN user u ON u.contactUserID = u.id WHERE userID = $userid;")->fetchAll(PDO::FETCH_ASSOC);
-					
+
 					$data['contacts'] = json_encode($results);
 					$data['message'] = "contact added";
 				}
 				else {
 					$data['message'] = "bad token";
 				}
-      }
+			}
 			else {
 				$data['message'] = "bad token";
 			}			
 		}
     
 		//PRIVATE FUNCTIONS:
-    private function checkLogin($id, $password)
-    {
-      $pdo = getPdo();
-      $stmt = $pdo->query("SELECT * FROM user WHERE id = $id");
-      foreach ($stmt as $row)
-      {
-          return password_verify($row['pwsalt'].$password, $row['password']);
-      }
-    }
+		private function checkLogin($id, $password)
+		{
+			$pdo = getPdo();
+			$stmt = $pdo->query("SELECT * FROM user WHERE id = $id");
+			foreach ($stmt as $row)
+			{
+					return password_verify($row['pwsalt'].$password, $row['password']);
+			}
+		}
 		
 		private	function getguid()
 		{
@@ -399,16 +399,16 @@
 		}
 		
 		private function checkToken($user, $token)
-    {
-      $pdo = getPdo();
+		{
+			$pdo = getPdo();
 			$stmt = $pdo->query("SELECT token, tokensalt, tokenexpire FROM user WHERE id = $user");
-      foreach ($stmt as $row)
-      {
+			foreach ($stmt as $row)
+			{
 				$now = new datetime(date("Y-m-d H:i:s"));
 				$expires = new datetime($row['tokenexpire']);
 				return ($expires > $now) && password_verify($token.$row['tokensalt'], $row['token']);
-      }
-    }
+			}
+		}
 		
 		private function newToken($userid, $password)
 		{
@@ -420,55 +420,54 @@
 				$tokensalt = password_hash($this->getguid(), PASSWORD_DEFAULT);
 				$token = password_hash($this->getguid(), PASSWORD_DEFAULT);
 				$tokencrypt = password_hash($token.$tokensalt, PASSWORD_DEFAULT);
-				
+
 				$stmt = $pdo->prepare("UPDATE user SET token = ?, tokensalt = ?, tokenexpire = ? WHERE id = ?;");
 				$stmt->execute([$tokencrypt,$tokensalt,$expire->format("Y-m-d H:i:s"),$userid]);
 				return $token;
 			}
 		}
-  }
+	}
 
-  $key = filter_var($_REQUEST["key"], FILTER_SANITIZE_STRING);
+	$key = filter_var($_REQUEST["key"], FILTER_SANITIZE_STRING);
 
-  if(isset($_REQUEST["action"]) && $key == "sX216917yESxF6n")
-  {
-    
-    $app = new App;
-    
-    $action = filter_var($_REQUEST["action"], FILTER_SANITIZE_STRING);
-    
-    require_once 'config.php';
-    
-    switch($action) {
+	if(isset($_REQUEST["action"]) && $key == "sX216917yESxF6n") {
+
+		$app = new App;
+
+		$action = filter_var($_REQUEST["action"], FILTER_SANITIZE_STRING);
+
+		require_once 'config.php';
+
+		switch($action) {
 			case "loginApp":
 				$app->loginApp();
 				break;
-      case "register":
-        $app->register();
-        break;
-      case "viewTransactions":
-        $app->viewTransactions();
-        break;
-      case "confirmTransaction":
-        $app->confirmTransaction();
-        break;
+			case "register":
+				$app->register();
+				break;
+			case "viewTransactions":
+				$app->viewTransactions();
+				break;
+			case "confirmTransaction":
+				$app->confirmTransaction();
+				break;
 			case "confirmPayment":
 				$app->confirmPayment();
 				break;
-      case "createLoan":
-        $app->createLoan();
-        break;
-      case "createPayment":
-        $app->createPayment();
-        break;
+			case "createLoan":
+				$app->createLoan();
+				break;
+			case "createPayment":
+				$app->createPayment();
+				break;
 			case "addContact":
 				$app->addContact();
 				break;
 			case "reloadAll":
 				$app->reloadAll();
 				break;
-      default:
-        break;
-    }
-  }
+			default:
+				break;
+		}
+	}
 ?>
