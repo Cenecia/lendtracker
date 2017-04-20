@@ -51,8 +51,8 @@
 		}
 	}
 
-  class App
-  {
+	class App
+	{
 		public function register()
 		{
 			if(isset($_POST['username'])) {
