@@ -1,27 +1,27 @@
 <?php 
 	class Security
 	{
-    public function checkLogin($id, $password)
-    {
-      $pdo = getPdo();
-      $stmt = $pdo->query("SELECT * FROM user WHERE id = $id");
-      foreach ($stmt as $row)
-      {
-          return password_verify($row['pwsalt'].$password, $row['password']);
-      }
-    }
+		public function checkLogin($id, $password)
+		{
+			$pdo = getPdo();
+			$stmt = $pdo->query("SELECT * FROM user WHERE id = $id");
+			foreach ($stmt as $row)
+			{
+					return password_verify($row['pwsalt'].$password, $row['password']);
+			}
+		}
 		
 		public function checkToken($user, $token)
-    {
-      $pdo = getPdo();
+		{
+			$pdo = getPdo();
 			$stmt = $pdo->query("SELECT token, tokensalt, tokenexpire FROM user WHERE id = $user");
-      foreach ($stmt as $row)
-      {
+			foreach ($stmt as $row)
+			{
 				$now = new datetime(date("Y-m-d H:i:s"));
 				$expires = new datetime($row['tokenexpire']);
 				return ($expires > $now) && password_verify($token.$row['tokensalt'], $row['token']);
-      }
-    }
+			}
+		}
 		
 		public function newToken($userid, $password)
 		{
@@ -33,14 +33,13 @@
 				$tokensalt = password_hash($this->getguid(), PASSWORD_DEFAULT);
 				$token = password_hash($this->getguid(), PASSWORD_DEFAULT);
 				$tokencrypt = password_hash($token.$tokensalt, PASSWORD_DEFAULT);
-				
 				$stmt = $pdo->prepare("UPDATE user SET token = ?, tokensalt = ?, tokenexpire = ? WHERE id = ?;");
 				$stmt->execute([$tokencrypt,$tokensalt,$expire->format("Y-m-d H:i:s"),$userid]);
 				return $token;
 			}
 		}
 		
-		private	function getguid()
+		private function getguid()
 		{
 			// OSX/Linux
 			if (function_exists('openssl_random_pseudo_bytes') === true) {
