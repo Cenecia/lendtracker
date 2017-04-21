@@ -1,8 +1,6 @@
 <?php 
 
-	include_once('Security.php');
-
-	include_once('App.php');	
+	include_once('App.php');
 
 	$key = filter_var($_REQUEST["key"], FILTER_SANITIZE_STRING);
 

@@ -1,4 +1,7 @@
 <?php
+
+  include('Security.php');
+
   class App
 	{
 		public function register()
