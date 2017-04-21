@@ -3,7 +3,7 @@
   include('Security.php');
 
   class App
-	{
+  {
 		public function register()
 		{
 			if(isset($_POST['username'])) {
@@ -26,7 +26,10 @@
 			if(isset($_REQUEST['token'])) {
 				$userid = filter_var($_REQUEST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_REQUEST['token'], FILTER_SANITIZE_STRING);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$pdo = getPdo();
 					$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed', createDate as 'transactionDate', description FROM transaction WHERE userID = $userid;")->fetchAll();
 					$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $userid;")->fetchAll(PDO::FETCH_ASSOC);
@@ -137,8 +140,10 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-
-					if($this->checkLogin($user, $password)) {
+          
+          $Security = new Security();
+          
+					if($Security->checkLogin($user, $password)) {
 
 						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
 						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
@@ -181,7 +186,10 @@
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$pdo = getPdo();
 					if($userid > 0) {
 						$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
@@ -234,7 +242,10 @@
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$lender = $userid;
 					$borrower = filter_var($_POST['borrower'], FILTER_VALIDATE_INT);
 					$pdo = getPdo();
@@ -263,7 +274,10 @@
 		{
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 					$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
 					$stmt = $pdo->query("SELECT * FROM transaction WHERE id = $transaction AND otherUserID = $userid AND confirmed = 1;");
@@ -287,7 +301,10 @@
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$contactUser = filter_var($_POST['contact'], FILTER_VALIDATE_INT);
 					$pdo = getPdo();
 					$stmt = $pdo->query("SELECT * FROM userContact WHERE userID = $userid AND contactUserID = $contactUser;");
@@ -311,7 +328,10 @@
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
-				if($this->checkToken($userid, $token)) {
+        
+        $Security = new Security();
+        
+				if($Security->checkToken($userid, $token)) {
 					$pdo = getPdo();
 					$results = $pdo->query("SELECT username, accepted FROM userContact uc JOIN user u ON u.contactUserID = u.id WHERE userID = $userid;")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -325,56 +345,5 @@
 			else {
 				$data['message'] = "bad token";
 			}			
-		}
-    
-		//PRIVATE FUNCTIONS:
-		private function checkLogin($id, $password)
-		{
-			$pdo = getPdo();
-			$stmt = $pdo->query("SELECT * FROM user WHERE id = $id");
-			foreach ($stmt as $row)
-			{
-					return password_verify($row['pwsalt'].$password, $row['password']);
-			}
-		}
-		
-		private	function getguid()
-		{
-			// OSX/Linux
-			if (function_exists('openssl_random_pseudo_bytes') === true) {
-					$data = openssl_random_pseudo_bytes(16);
-					$data[6] = chr(ord($data[6]) & 0x0f | 0x40);    // set version to 0100
-					$data[8] = chr(ord($data[8]) & 0x3f | 0x80);    // set bits 6-7 to 10
-					return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-			}
-		}
-		
-		private function checkToken($user, $token)
-		{
-			$pdo = getPdo();
-			$stmt = $pdo->query("SELECT token, tokensalt, tokenexpire FROM user WHERE id = $user");
-			foreach ($stmt as $row)
-			{
-				$now = new datetime(date("Y-m-d H:i:s"));
-				$expires = new datetime($row['tokenexpire']);
-				return ($expires > $now) && password_verify($token.$row['tokensalt'], $row['token']);
-			}
-		}
-		
-		private function newToken($userid, $password)
-		{
-			if($this->checkLogin($userid, $password)) {
-				$pdo = getPdo();
-				$expire = new datetime(date("Y-m-d H:i:s"));
-				$expire->add(new DateInterval('PT1H'));
-				$data['date'] = $expire->format("Y-m-d H:i:s");
-				$tokensalt = password_hash($this->getguid(), PASSWORD_DEFAULT);
-				$token = password_hash($this->getguid(), PASSWORD_DEFAULT);
-				$tokencrypt = password_hash($token.$tokensalt, PASSWORD_DEFAULT);
-
-				$stmt = $pdo->prepare("UPDATE user SET token = ?, tokensalt = ?, tokenexpire = ? WHERE id = ?;");
-				$stmt->execute([$tokencrypt,$tokensalt,$expire->format("Y-m-d H:i:s"),$userid]);
-				return $token;
-			}
 		}
 	}
