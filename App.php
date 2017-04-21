@@ -27,9 +27,7 @@
 				$userid = filter_var($_REQUEST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_REQUEST['token'], FILTER_SANITIZE_STRING);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$pdo = getPdo();
 					$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed', createDate as 'transactionDate', description FROM transaction WHERE userID = $userid;")->fetchAll();
 					$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $userid;")->fetchAll(PDO::FETCH_ASSOC);
@@ -80,9 +78,7 @@
 					$user = $userid[0];
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
 
-					$Security = new Security();
-
-					if($Security->checkLogin($user, $password)) {
+					if(Security::checkLogin($user, $password)) {
 						
 						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', confirmed as 'transactionConfirmed', createDate as 'transactionDate', description FROM transaction WHERE userID = $user;")->fetchAll();
 						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate as 'paymentDate' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
@@ -117,7 +113,7 @@
 						$contacts = $pdo->query("SELECT u.id, u.username, uc.accepted FROM userContact uc JOIN user u ON uc.contactUserID = u.id WHERE uc.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
 
 						$data['contacts'] = json_encode($contacts);
-						$data['token'] = $Security->newToken($user, $password);
+						$data['token'] = Security::newToken($user, $password);
 						$data['message'] = "success";
 						$data['userid'] = $user;
 					} else {
@@ -140,11 +136,8 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-          
-          $Security = new Security();
-          
-					if($Security->checkLogin($user, $password)) {
-
+					
+          if(Security::checkLogin($user, $password)) {
 						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
 						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -187,9 +180,7 @@
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$pdo = getPdo();
 					if($userid > 0) {
 						$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
@@ -243,9 +234,7 @@
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$lender = $userid;
 					$borrower = filter_var($_POST['borrower'], FILTER_VALIDATE_INT);
 					$pdo = getPdo();
@@ -275,9 +264,7 @@
 			if(isset($_POST['token'])) {
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 					$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
 					$stmt = $pdo->query("SELECT * FROM transaction WHERE id = $transaction AND otherUserID = $userid AND confirmed = 1;");
@@ -302,9 +289,7 @@
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$contactUser = filter_var($_POST['contact'], FILTER_VALIDATE_INT);
 					$pdo = getPdo();
 					$stmt = $pdo->query("SELECT * FROM userContact WHERE userID = $userid AND contactUserID = $contactUser;");
@@ -329,9 +314,7 @@
 				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
 				$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
         
-        $Security = new Security();
-        
-				if($Security->checkToken($userid, $token)) {
+				if(Security::checkToken($userid, $token)) {
 					$pdo = getPdo();
 					$results = $pdo->query("SELECT username, accepted FROM userContact uc JOIN user u ON u.contactUserID = u.id WHERE userID = $userid;")->fetchAll(PDO::FETCH_ASSOC);
 

@@ -11,7 +11,7 @@
       }
     }
 
-    public function checkToken($user, $token)
+    static public function checkToken($user, $token)
     {
       $pdo = getPdo();
       $stmt = $pdo->query("SELECT token, tokensalt, tokenexpire FROM user WHERE id = $user");
@@ -23,15 +23,15 @@
       }
     }
 
-    public function newToken($userid, $password)
+    static public function newToken($userid, $password)
     {
-      if($this->checkLogin($userid, $password)) {
+      if(self::checkLogin($userid, $password)) {
         $pdo = getPdo();
         $expire = new datetime(date("Y-m-d H:i:s"));
         $expire->add(new DateInterval('PT1H'));
         $data['date'] = $expire->format("Y-m-d H:i:s");
-        $tokensalt = password_hash($this->getguid(), PASSWORD_DEFAULT);
-        $token = password_hash($this->getguid(), PASSWORD_DEFAULT);
+        $tokensalt = password_hash(self::getguid(), PASSWORD_DEFAULT);
+        $token = password_hash(self::getguid(), PASSWORD_DEFAULT);
         $tokencrypt = password_hash($token.$tokensalt, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("UPDATE user SET token = ?, tokensalt = ?, tokenexpire = ? WHERE id = ?;");
         $stmt->execute([$tokencrypt,$tokensalt,$expire->format("Y-m-d H:i:s"),$userid]);
