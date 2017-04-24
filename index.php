@@ -10,8 +10,6 @@
 
 		$action = filter_var($_REQUEST["action"], FILTER_SANITIZE_STRING);
 
-		require_once 'config.php';
-
 		switch($action) {
 			case "loginApp":
 				$app->loginApp();
