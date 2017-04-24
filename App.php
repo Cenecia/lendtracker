@@ -1,6 +1,7 @@
 <?php
 
-  include('Security.php');
+  require_once 'Security.php';
+	require_once 'config.php';
 
   class App
   {
@@ -137,7 +138,7 @@
 					$user = $userid[0];
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
 					
-          if(Security::checkLogin($user, $password)) {
+					if(Security::checkLogin($user, $password)) {
 						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
 						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
 

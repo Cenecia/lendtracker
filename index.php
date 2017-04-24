@@ -1,6 +1,6 @@
 <?php 
 
-	include_once('App.php');
+	require_once 'App.php';
 
 	$key = filter_var($_REQUEST["key"], FILTER_SANITIZE_STRING);
 
