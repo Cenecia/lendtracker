@@ -5,20 +5,191 @@
 
   class App
   {
+		public function tryLogin(){
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if(isset($userid[0]) && $userid[0] > 0) {
+					$user = $userid[0];
+					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
+
+					if(Security::checkLogin($user, $password)) {
+						echo Security::newToken($user, $password);;
+						return;
+					}
+				}
+			}
+			echo 0;
+			return;
+		}
+		
 		public function register()
 		{
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if(count($userid) > 0){
+					echo "0";
+					return;
+				}
 				$pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
 				$password = password_hash($pwsalt.$_POST['password'], PASSWORD_DEFAULT);
-
-				$pdo = getPdo();
 				$stmt = $pdo->prepare('INSERT INTO user (username, password, pwsalt) VALUES (?,?,?)');
 				$stmt->execute([$username, $password, $pwsalt]);
+				echo "1";
+				return;
+			}
+			echo "0";
+		}
+		
+		public function viewTransactions()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					
+					if(Security::checkToken($user, $token)) {
+						$loans = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $user AND active = 1;")->fetchAll();
+						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user AND active = 1;")->fetchAll(PDO::FETCH_ASSOC);
 
-				$data['message'] = "account created successfully";
+						foreach($loans as $loan) {
+							$data['transactions'][$loan['id']]['loan'] = json_encode($loan);
+							$data['transactions'][$loan['id']]['remaining'] = $loan['amount'];
+						}
 
-				echo json_encode($data);
+						foreach($loanPaymentsResults as $payment) {
+							$data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
+							$data['transactions'][$payment['transactionId']]['remaining'] -= $payment['paymentAmount'];
+						}
+						
+						echo json_encode($data);
+						return;
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function simpleLoan(){
+			if(isset($_POST['token'])) {
+				$username = filter_var($_POST["user"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
+
+					if(Security::checkToken($user, $token)) {
+						$lender = $user;
+						$recipient = filter_var($_POST['recipient'], FILTER_SANITIZE_STRING);
+						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						$description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
+						$stmt = $pdo->prepare('INSERT INTO transaction (transactionTypeID, description, amount, userID, loanedToName, confirmed, createDate) VALUES (?,?,?,?,?, ?, NOW());');
+						$stmt->execute([1,$description, $amount, $lender, $recipient, 1]);
+						echo "1";
+						return;
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function getTransaction()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					
+					if(Security::checkToken($user, $token)) {
+						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						$loan = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $user AND id = $transactionID;")->fetchAll();
+						echo json_encode($loan);
+						return;
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function simplePayment(){
+			if(isset($_POST['token'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					if(Security::checkToken($user, $token)) {
+						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						$id = $pdo->query("SELECT id FROM transaction WHERE id = $transaction AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+ 						if(count($id) > 0){
+ 							$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?, NOW());');
+ 							$stmt->execute([$transaction, $amount]);
+ 							echo "1";
+ 							return;
+ 						}
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function cancelTransaction(){
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					
+					if(Security::checkToken($user, $token)) {
+						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						$stmt = $pdo->prepare('UPDATE transaction SET active = 0 WHERE id = ? AND userID = ?;');
+						$stmt->execute([$transactionID, $user]);
+						return "1";
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function createPayment()
+		{
+			if(isset($_POST['token'])) {
+				$username = filter_var($_POST["user"], FILTER_VALIDATE_INT);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					if(Security::checkToken($user, $token)) {
+					$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+					$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
+					$stmt = $pdo->query("SELECT * FROM transaction WHERE id = $transaction AND otherUserID = $userid AND confirmed = 1;");
+						if($stmt->rowCount() > 0) {
+							$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?, NOW());');
+							$stmt->execute([$transaction, $amount]);
+						}
+					$data['message'] = "payment added";
+					}
+				}
+				else {
+					$data['message'] = "bad token";
+				}
+			}
+			else {
+				$data['message'] = "bad token";
 			}
 		}
 		
@@ -127,54 +298,7 @@
 
 			echo json_encode($data);
 		}
-
-		public function viewTransactions()
-		{
-			if(isset($_POST['username'])) {
-				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
-				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if($userid[0] > 0) {
-					$user = $userid[0];
-					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-					
-					if(Security::checkLogin($user, $password)) {
-						$loans = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE userID = $user;")->fetchAll();
-						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-
-						foreach($loans as $loan) {
-							$data['transactions'][$loan['transactionId']]['loan'] = json_encode($loan);
-						}
-
-						foreach($loanPaymentsResults as $payment) {
-							$data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
-						}
-
-						$payments = $pdo->query("SELECT id as 'transactionId', amount as 'initialAmount', createDate as 'lendDate', confirmed as 'transactionConfirmed' FROM transaction WHERE otherUserID = $user;")->fetchAll();
-						$paymentPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed' FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.otherUserID = $user;")->fetchAll(PDO::FETCH_ASSOC);
-
-						foreach($payments as $pay) {
-							$data['payments'][$pay['transactionId']]['loan'] = json_encode($pay);
-						}
-
-						foreach($paymentPaymentsResults as $payPay) {
-							$data['payments'][$payPay['transactionId']]['payments'][$payPay['paymentId']] = json_encode($payPay);
-						}
-
-						$data['message'] = "success";
-					}
-					else {
-						$data['message'] = "wrong key";
-					}
-
-				} else {
-					$data['message'] = 'View transactions:';
-				}
-
-				echo json_encode($data);
-			}
-		}
-    
+		
 		public function confirmTransaction()
 		{
 			if(isset($_POST['token'])) {
@@ -257,30 +381,6 @@
 			}
 			else {
 				$data["message"] = "bad token";
-			}
-		}
-    
-		public function createPayment()
-		{
-			if(isset($_POST['token'])) {
-				$userid = filter_var($_POST["user"], FILTER_VALIDATE_INT);
-        
-				if(Security::checkToken($userid, $token)) {
-					$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
-					$transaction = filter_var($_POST['transaction'], FILTER_VALIDATE_INT);
-					$stmt = $pdo->query("SELECT * FROM transaction WHERE id = $transaction AND otherUserID = $userid AND confirmed = 1;");
-					if($stmt->rowCount() > 0) {
-						$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?, NOW());');
-						$stmt->execute([$transaction, $amount]);
-					}
-					$data['message'] = "payment added";
-				}
-				else {
-					$data['message'] = "bad token";
-				}
-			}
-			else {
-				$data['message'] = "bad token";
 			}
 		}
 		

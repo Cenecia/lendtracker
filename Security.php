@@ -19,7 +19,9 @@
       {
         $now = new datetime(date("Y-m-d H:i:s"));
         $expires = new datetime($row['tokenexpire']);
-        return ($expires > $now) && password_verify($token.$row['tokensalt'], $row['token']);
+        if(($expires > $now) && password_verify($token.$row['tokensalt'], $row['token'])){
+          return true;
+        }
       }
     }
 

@@ -11,6 +11,18 @@
 		$action = filter_var($_REQUEST["action"], FILTER_SANITIZE_STRING);
 
 		switch($action) {
+			case "tryLogin":
+				$app->tryLogin();
+				break;
+			case "simpleLoan":
+				$app->simpleLoan();
+				break;
+			case "simplePayment":
+				$app->simplePayment();
+				break;
+			case "cancelTransaction":
+				$app->cancelTransaction();
+				break;
 			case "loginApp":
 				$app->loginApp();
 				break;
@@ -37,6 +49,9 @@
 				break;
 			case "reloadAll":
 				$app->reloadAll();
+				break;
+			case "getTransaction":
+				$app->getTransaction();
 				break;
 			default:
 				break;
