@@ -84,14 +84,26 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$token = filter_var($_POST['token'], FILTER_SANITIZE_STRING);
-
 					if(Security::checkToken($user, $token)) {
 						$lender = $user;
 						$recipient = filter_var($_POST['recipient'], FILTER_SANITIZE_STRING);
+						if(strlen($recipient) == 0){
+							echo "recipient cannot be blank";
+							return;
+						}
 						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						if($amount <= 0 || $amount >= 1000000){
+							echo "invalid amount";
+							return;
+						}
 						$description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
 						$stmt = $pdo->prepare('INSERT INTO transaction (transactionTypeID, description, amount, userID, loanedToName, confirmed, createDate) VALUES (?,?,?,?,?, ?, NOW());');
 						$stmt->execute([1,$description, $amount, $lender, $recipient, 1]);
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem saving this loan.";
+							return;
+						}
 						echo "1";
 						return;
 					}
