@@ -38,6 +38,11 @@
 				$password = password_hash($pwsalt.$_POST['password'], PASSWORD_DEFAULT);
 				$stmt = $pdo->prepare('INSERT INTO user (username, password, pwsalt) VALUES (?,?,?)');
 				$stmt->execute([$username, $password, $pwsalt]);
+				$error = $pdo->errorInfo();
+				if($error[0] != 0){
+					echo "There was a problem registering.";
+					return;
+				}
 				echo "1";
 				return;
 			}
@@ -56,13 +61,16 @@
 					
 					if(Security::checkToken($user, $token)) {
 						$loans = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $user AND active = 1;")->fetchAll();
-						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user AND active = 1;")->fetchAll(PDO::FETCH_ASSOC);
-
+						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user AND t.active = 1 AND p.active = 1 ORDER BY p.createDate;")->fetchAll(PDO::FETCH_ASSOC);
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem getting transactions.";
+							return;
+						}
 						foreach($loans as $loan) {
 							$data['transactions'][$loan['id']]['loan'] = json_encode($loan);
 							$data['transactions'][$loan['id']]['remaining'] = $loan['amount'];
 						}
-
 						foreach($loanPaymentsResults as $payment) {
 							$data['transactions'][$payment['transactionId']]['payments'][$payment['paymentId']] = json_encode($payment);
 							$data['transactions'][$payment['transactionId']]['remaining'] -= $payment['paymentAmount'];
@@ -125,8 +133,72 @@
 					if(Security::checkToken($user, $token)) {
 						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
 						$loan = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $user AND id = $transactionID;")->fetchAll();
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem getting transaction.";
+							return;
+						}
 						echo json_encode($loan);
 						return;
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function getPayment()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					
+					if(Security::checkToken($user, $token)) {
+						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
+						$payment = $pdo->query("SELECT t.id as transactionID, t.amount as transactionAmount, p.amount as paymentAmount, p.createDate, t.description FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.userID = $user AND p.id = $paymentID;")->fetchAll();
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem getting data.";
+							return;
+						}
+						echo json_encode($payment);
+						return;
+					}
+				}
+			}
+			echo "0";
+		}
+		
+		public function updatePayment()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					
+					if(Security::checkToken($user, $token)) {
+						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
+						$count = $pdo->query("SELECT COUNT(p.id) FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND t.userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						if($count > 0){
+							$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+							$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
+							$paymentDate = date("Y-m-d", $intDate);
+ 							$stmt = $pdo->prepare('UPDATE payment SET amount = ?, createDate = ? WHERE id = ?;');
+ 							$stmt->execute([$amount, $paymentDate, $paymentID]);
+							$error = $pdo->errorInfo();
+							if($error[0] != 0){
+								echo "There was a problem saving payment.";
+								return;
+							}
+							echo "1";
+							return;
+						}
 					}
 				}
 			}
@@ -144,10 +216,22 @@
 					if(Security::checkToken($user, $token)) {
 						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
+						$paymentDate = date("Y-m-d", $intDate);
 						$id = $pdo->query("SELECT id FROM transaction WHERE id = $transaction AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem saving this payment.";
+							return;
+						}
  						if(count($id) > 0){
- 							$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?, NOW());');
- 							$stmt->execute([$transaction, $amount]);
+ 							$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?,?);');
+ 							$stmt->execute([$transaction, $amount, $paymentDate]);
+							$error = $pdo->errorInfo();
+							if($error[0] != 0){
+								echo "There was a problem saving this payment.";
+								return;
+							}
  							echo "1";
  							return;
  						}
@@ -157,6 +241,34 @@
 			echo "0";
 		}
 		
+		public function cancelPayment(){
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if($userid[0] > 0) {
+					$user = $userid[0];
+					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					if(Security::checkToken($user, $token)) {
+						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
+						$count = $pdo->query("SELECT COUNT(p.id) FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND t.userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						if($count > 0){
+							$stmt = $pdo->prepare('UPDATE payment SET active = 0 WHERE id = ?;');
+							$stmt->execute([$paymentID]);
+							$error = $pdo->errorInfo();
+							if($error[0] != 0){
+								echo "There was a problem cancelling this payment.";
+								return;
+							}
+							echo "1";
+							return;
+						}
+					}
+				}
+			}
+			echo "0";
+		}		
+		
 		public function cancelTransaction(){
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
@@ -165,12 +277,17 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					
 					if(Security::checkToken($user, $token)) {
 						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
 						$stmt = $pdo->prepare('UPDATE transaction SET active = 0 WHERE id = ? AND userID = ?;');
 						$stmt->execute([$transactionID, $user]);
-						return "1";
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem cancelling this transaction.";
+							return;
+						}
+						echo "1";
+						return;
 					}
 				}
 			}

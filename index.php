@@ -53,6 +53,15 @@
 			case "getTransaction":
 				$app->getTransaction();
 				break;
+			case "getPayment":
+				$app->getPayment();
+				break;
+			case "updatePayment":
+				$app->updatePayment();
+				break;
+			case "cancelPayment":
+				$app->cancelPayment();
+				break;
 			default:
 				break;
 		}
