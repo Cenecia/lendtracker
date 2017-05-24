@@ -62,6 +62,9 @@
 			case "cancelPayment":
 				$app->cancelPayment();
 				break;
+			case "getTransactionTypes":
+				$app->getTransactionTypes();
+				break;
 			default:
 				break;
 		}

@@ -60,7 +60,7 @@
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					
 					if(Security::checkToken($user, $token)) {
-						$loans = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $user AND active = 1;")->fetchAll();
+						$loans = $pdo->query("SELECT t.id, tt.name as 'type', amount, createDate, confirmed, loanedToName, description FROM transaction t JOIN transactionType tt ON t.transactionTypeID = tt.id WHERE userID = $user AND active = 1;")->fetchAll();
 						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user AND t.active = 1 AND p.active = 1 ORDER BY p.createDate;")->fetchAll(PDO::FETCH_ASSOC);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
@@ -105,8 +105,9 @@
 							return;
 						}
 						$description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
+						$transactionType = filter_var($_POST['transactionType'], FILTER_VALIDATE_INT);
 						$stmt = $pdo->prepare('INSERT INTO transaction (transactionTypeID, description, amount, userID, loanedToName, confirmed, createDate) VALUES (?,?,?,?,?, ?, NOW());');
-						$stmt->execute([1,$description, $amount, $lender, $recipient, 1]);
+						$stmt->execute([$transactionType, $description, $amount, $lender, $recipient, 1]);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem saving this loan.";
@@ -144,6 +145,19 @@
 				}
 			}
 			echo "0";
+		}
+		
+		public function getTransactionTypes()
+		{
+			$pdo = getPdo();
+			$transactionTypes = $pdo->query("SELECT * FROM transactionType;")->fetchAll();
+			$error = $pdo->errorInfo();
+			if($error[0] != 0){
+				echo "There was a problem getting transaction types.";
+				return;
+			}
+			echo json_encode($transactionTypes);
+			return;
 		}
 		
 		public function getPayment()
