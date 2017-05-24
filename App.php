@@ -229,16 +229,26 @@
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					if(Security::checkToken($user, $token)) {
 						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						if($amount <= 0){
+							echo "invalid amount";
+							return;
+						}
 						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
 						$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
 						$paymentDate = date("Y-m-d", $intDate);
-						$id = $pdo->query("SELECT id FROM transaction WHERE id = $transaction AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						$remaining = $pdo->query("SELECT SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transaction AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
+						if((int)$remaining - (int)$amount < 0){
+							echo "Payment is more than remaining amount.";
+							return;
+						}
+						//echo json_encode($remaining);
+						//return;
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem saving this payment.";
 							return;
 						}
- 						if(count($id) > 0){
+ 						//if(count($id) > 0){
  							$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?,?);');
  							$stmt->execute([$transaction, $amount, $paymentDate]);
 							$error = $pdo->errorInfo();
@@ -248,7 +258,7 @@
 							}
  							echo "1";
  							return;
- 						}
+ 						//}
 					}
 				}
 			}
