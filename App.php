@@ -13,9 +13,8 @@
 				if(isset($userid[0]) && $userid[0] > 0) {
 					$user = $userid[0];
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-
 					if(Security::checkLogin($user, $password)) {
-						echo Security::newToken($user, $password);;
+						echo Security::newToken($user, $password);
 						return;
 					}
 				}
@@ -31,10 +30,18 @@
 				$pdo = getPdo();
 				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
 				if(count($userid) > 0){
-					echo "0";
+					echo "Username already exists";
 					return;
 				}
-				$pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
+				if(strlen($_POST['password']) < 8){
+					echo "Password too short";
+					return;
+				}
+				elseif(strlen($_POST['password']) > 32){
+					echo "Password too long";
+					return;
+				}
+				$pwsalt = password_hash(Security::randomStr(), PASSWORD_DEFAULT);
 				$password = password_hash($pwsalt.$_POST['password'], PASSWORD_DEFAULT);
 				$stmt = $pdo->prepare('INSERT INTO user (username, password, pwsalt) VALUES (?,?,?)');
 				$stmt->execute([$username, $password, $pwsalt]);
@@ -45,6 +52,37 @@
 				}
 				echo "1";
 				return;
+			}
+			echo "0";
+		}
+		
+		public function resetPassword()
+		{
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if(isset($userid[0]) && $userid[0] > 0) {
+					$user = $userid[0];
+					$oldPassword = filter_var($_POST["oldPassword"], FILTER_SANITIZE_STRING);
+					if(Security::checkLogin($user, $oldPassword)) {
+						if(strlen($_POST['newPassword'] < 8)){
+							echo "password too short";
+							return;
+						}
+						$pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
+						$newPassword = password_hash($pwsalt.$_POST['newPassword'], PASSWORD_DEFAULT);
+						$stmt = $pdo->prepare('UPDATE user SET password = ?, pwsalt = ? WHERE id = ?;');
+						$stmt->execute([$newPassword, $pwsalt, $user]);
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem restting password.";
+							return;
+						}
+						echo "1";
+						return;
+					}
+				}
 			}
 			echo "0";
 		}

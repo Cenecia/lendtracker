@@ -14,6 +14,9 @@
 			case "tryLogin":
 				$app->tryLogin();
 				break;
+			case "resetPassword":
+				$app->resetPassword();
+				break;
 			case "simpleLoan":
 				$app->simpleLoan();
 				break;

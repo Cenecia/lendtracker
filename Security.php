@@ -40,6 +40,10 @@
         return $token;
       }
     }
+    
+    static public function randomStr(){
+      return self::getguid();
+    }
 
     private function getguid()
     {
