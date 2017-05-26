@@ -17,6 +17,9 @@
 			case "resetPassword":
 				$app->resetPassword();
 				break;
+			case "tokenResetPassword":
+				$app->tokenResetPassword();
+				break;
 			case "simpleLoan":
 				$app->simpleLoan();
 				break;

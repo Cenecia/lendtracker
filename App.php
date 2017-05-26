@@ -26,7 +26,11 @@
 		public function register()
 		{
 			if(isset($_POST['username'])) {
-				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
+				$username = filter_var($_POST["username"], FILTER_VALIDATE_EMAIL);
+				if(!$username){
+					echo "Invalid Email Address";
+					return;
+				}
 				$pdo = getPdo();
 				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
 				if(count($userid) > 0){
@@ -56,6 +60,33 @@
 			echo "0";
 		}
 		
+		public function tokenResetPassword(){
+			if(isset($_POST['username'])) {
+				$username = filter_var($_POST["username"], FILTER_VALIDATE_EMAIL);
+				$pdo = getPdo();
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
+				if(isset($userid[0]) && $userid[0] > 0) {
+					$user = $userid[0];
+					$randomPassword = Security::randomStr();
+					$pwsalt = password_hash(Security::randomStr(), PASSWORD_DEFAULT);
+					$newPassword = password_hash($pwsalt.$randomPassword, PASSWORD_DEFAULT);
+					$stmt = $pdo->prepare('UPDATE user SET password = ?, pwsalt = ? WHERE id = ?;');
+					$stmt->execute([$newPassword, $pwsalt, $user]);
+					$error = $pdo->errorInfo();
+					if($error[0] != 0){
+						echo "There was a problem restting password.";
+						return;
+					}
+					$emailSubj = "Lendtracker Password Reset";
+					$msg = "Your password for Lendtracker was reset. Your new password is $randomPassword.";
+					Security::sendEmail($username, $emailSubj, $msg);
+					echo "1";
+					return;
+				}
+			}
+			echo "Old password was incorrect. Please retry.";
+		}
+		
 		public function resetPassword()
 		{
 			if(isset($_POST['username'])) {
@@ -66,11 +97,15 @@
 					$user = $userid[0];
 					$oldPassword = filter_var($_POST["oldPassword"], FILTER_SANITIZE_STRING);
 					if(Security::checkLogin($user, $oldPassword)) {
-						if(strlen($_POST['newPassword'] < 8)){
-							echo "password too short";
+						if(strlen($_POST['newPassword']) < 8){
+							echo "Password too short";
 							return;
 						}
-						$pwsalt = password_hash($_SERVER['HTTP_USER_AGENT'], PASSWORD_DEFAULT);
+						elseif(strlen($_POST['newPassword']) > 32){
+							echo "Password too long";
+							return;
+						}
+						$pwsalt = password_hash(Security::randomStr(), PASSWORD_DEFAULT);
 						$newPassword = password_hash($pwsalt.$_POST['newPassword'], PASSWORD_DEFAULT);
 						$stmt = $pdo->prepare('UPDATE user SET password = ?, pwsalt = ? WHERE id = ?;');
 						$stmt->execute([$newPassword, $pwsalt, $user]);
@@ -84,7 +119,7 @@
 					}
 				}
 			}
-			echo "0";
+			echo "Old password was incorrect. Please retry.";
 		}
 		
 		public function viewTransactions()

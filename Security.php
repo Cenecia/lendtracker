@@ -41,6 +41,12 @@
       }
     }
     
+    static public function sendEmail($to,$subj,$msg){
+      $headers = "From: noreply@chrismcbride.ca";
+
+      mail($to,$subj,$msg,$headers);
+    }
+    
     static public function randomStr(){
       return self::getguid();
     }
