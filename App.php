@@ -131,10 +131,34 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
+					$sortOrder = "";
 					
 					if(Security::checkToken($user, $token)) {
-						$loans = $pdo->query("SELECT t.id, tt.name as 'type', amount, createDate, confirmed, loanedToName, description FROM transaction t JOIN transactionType tt ON t.transactionTypeID = tt.id WHERE userID = $user AND active = 1;")->fetchAll();
-						$loanPaymentsResults = $pdo->query("SELECT p.id as 'paymentId', p.transactionId as 'transactionId', p.amount as 'paymentAmount', p.confirmed as 'paymentConfirmed', p.createDate FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE t.userID = $user AND t.active = 1 AND p.active = 1 ORDER BY p.createDate;")->fetchAll(PDO::FETCH_ASSOC);
+						$loans = $pdo->query("SELECT 
+																		t.id, 
+																		tt.name as 'type', 
+																		amount, 
+																		createDate, 
+																		confirmed, 
+																		loanedToName, 
+																		description 
+																	FROM transaction t 
+																	JOIN transactionType tt ON t.transactionTypeID = tt.id 
+																	WHERE userID = $user 
+																	AND active = 1
+																	ORDER BY createDate $sortOrder;")->fetchAll();
+						$loanPaymentsResults = $pdo->query("SELECT 
+																									p.id as 'paymentId', 
+																									p.transactionId as 'transactionId', 
+																									p.amount as 'paymentAmount', 
+																									p.confirmed as 'paymentConfirmed', 
+																									p.createDate 
+																								FROM payment p 
+																								JOIN transaction t ON p.transactionID = t.id 
+																								WHERE t.userID = $user 
+																								AND t.active = 1 
+																								AND p.active = 1 
+																								ORDER BY p.createDate;")->fetchAll(PDO::FETCH_ASSOC);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem getting transactions.";
