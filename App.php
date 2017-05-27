@@ -131,7 +131,7 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					$sortOrder = "";
+					$sortOrder = $_POST['sortDesc'] == 1 ? "DESC" : "";
 					
 					if(Security::checkToken($user, $token)) {
 						$loans = $pdo->query("SELECT 
