@@ -122,6 +122,12 @@
 			echo "Old password was incorrect. Please retry.";
 		}
 		
+		private function getTransactionTypeId($type){
+			$pdo = getPdo();
+			$typeid = $pdo->query("SELECT id FROM transactionType WHERE name = '$type'")->fetchAll(PDO::FETCH_COLUMN);
+			return $typeid[0];
+		}
+		
 		public function viewTransactions()
 		{
 			if(isset($_POST['username'])) {
@@ -132,6 +138,8 @@
 					$user = $userid[0];
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					$sortOrder = $_POST['sortDesc'] == 1 ? "DESC" : "";
+					$type = filter_var($_POST["type"], FILTER_SANITIZE_STRING);
+					$typeid = $this->getTransactionTypeId($type);
 					
 					if(Security::checkToken($user, $token)) {
 						$loans = $pdo->query("SELECT 
@@ -146,7 +154,13 @@
 																	JOIN transactionType tt ON t.transactionTypeID = tt.id 
 																	WHERE userID = $user 
 																	AND active = 1
+																	AND transactionTypeID = $typeid 
 																	ORDER BY createDate $sortOrder;")->fetchAll();
+						$error = $pdo->errorInfo();
+						if($error[0] != 0){
+							echo "There was a problem getting transactions.";
+							return;
+						}
 						$loanPaymentsResults = $pdo->query("SELECT 
 																									p.id as 'paymentId', 
 																									p.transactionId as 'transactionId', 
@@ -158,6 +172,7 @@
 																								WHERE t.userID = $user 
 																								AND t.active = 1 
 																								AND p.active = 1 
+																								AND transactionTypeID = $typeid 
 																								ORDER BY p.createDate;")->fetchAll(PDO::FETCH_ASSOC);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
