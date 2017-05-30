@@ -122,10 +122,18 @@
 			echo "Old password was incorrect. Please retry.";
 		}
 		
-		private function getTransactionTypeId($type){
+		private function getTransactionTypeId($type)
+		{
 			$pdo = getPdo();
 			$typeid = $pdo->query("SELECT id FROM transactionType WHERE name = '$type'")->fetchAll(PDO::FETCH_COLUMN);
 			return $typeid[0];
+		}
+		
+		private function getTransactionTypeKey($transactionID)
+		{
+			$pdo = getPdo();
+			$key = $pdo->query("SELECT `key` FROM transaction t JOIN transactionType tt ON t.transactionTypeID = tt.id WHERE t.id = $transactionID;")->fetchAll(PDO::FETCH_COLUMN);
+			return $key[0];
 		}
 		
 		public function viewTransactions()
@@ -262,7 +270,7 @@
 		public function getTransactionTypes()
 		{
 			$pdo = getPdo();
-			$transactionTypes = $pdo->query("SELECT * FROM transactionType;")->fetchAll();
+			$transactionTypes = $pdo->query("SELECT * FROM transactionType WHERE `key` = 'inc' OR `key` = 'out';")->fetchAll();
 			$error = $pdo->errorInfo();
 			if($error[0] != 0){
 				echo "There was a problem getting transaction types.";
@@ -307,7 +315,6 @@
 				if($userid[0] > 0) {
 					$user = $userid[0];
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					
 					if(Security::checkToken($user, $token)) {
 						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
 						$count = $pdo->query("SELECT COUNT(p.id) FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND t.userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
@@ -320,9 +327,12 @@
 							$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
 							$paymentDate = date("Y-m-d", $intDate);
 							$originalPaymentAmt = $pdo->query("SELECT p.amount FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
-							
+							$transactionID = $pdo->query("SELECT p.transactionID FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+							if($this->getTransactionTypeKey($transactionID[0]) == 'com'){
+								echo 'this loan is completed';
+								return;
+							}
 							if($amount > $originalPaymentAmt[0]){
-								$transactionID = $pdo->query("SELECT p.transactionID FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
 								$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transactionID[0] AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
 								$balance = $remaining[0] - $amount + $originalPaymentAmt[0];
 								if($balance < 0){
@@ -336,6 +346,11 @@
 							if($error[0] != 0){
 								echo "There was a problem saving payment.";
 								return;
+							}
+							if($balance == 0){
+								$completedID = $this->getTransactionTypeId("Completed");
+								$stmt = $pdo->prepare('UPDATE transaction SET transactionTypeID = ? WHERE id = ?;');
+								$stmt->execute([$completedID, $transaction]);
 							}
 							echo "1";
 							return;
@@ -361,6 +376,10 @@
 							return;
 						}
 						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						if($this->getTransactionTypeKey($transaction) == 'com'){
+							echo 'this loan is completed';
+							return;
+						}
 						$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
 						$paymentDate = date("Y-m-d", $intDate);
 						$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transaction AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
@@ -383,6 +402,11 @@
 						if($error[0] != 0){
 							echo "There was a problem saving this payment.";
 							return;
+						}
+						if($balance == 0){
+							$completedID = $this->getTransactionTypeId("Completed");
+							$stmt = $pdo->prepare('UPDATE transaction SET transactionTypeID = ? WHERE id = ?;');
+							$stmt->execute([$completedID, $transaction]);
 						}
 						echo "1";
 						return;
