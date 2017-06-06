@@ -1,6 +1,17 @@
 <?php
   class Payment
 	{
+		private function getTransactionTypeKey($transactionID, $userid)
+		{
+			$pdo = getPdo();
+			$key = $pdo->query("SELECT `key` 
+													FROM transaction t 
+													JOIN transactionType tt ON t.transactionTypeID = tt.id 
+													WHERE t.id = $transactionID 
+													AND t.userID = $userid;")->fetchAll(PDO::FETCH_COLUMN);
+			return $key[0];
+		}
+		
 		public function getPayment()
 		{
 			if(isset($_POST['username'])) {
@@ -97,7 +108,7 @@
 							return;
 						}
 						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
-						if($this->getTransactionTypeKey($transaction) == 'com'){
+						if($this->getTransactionTypeKey($transaction, $user) == 'com'){
 							echo 'this loan is completed';
 							return;
 						}
@@ -147,7 +158,13 @@
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					if(Security::checkToken($user, $token)) {
 						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
-						$count = $pdo->query("SELECT COUNT(p.id) FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND t.userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						$count = $pdo->query("SELECT COUNT(p.id) 
+																	FROM payment p 
+																	JOIN transaction t ON p.transactionID = t.id 
+																	JOIN transactionType tt ON t.transactionTypeID = tt.id
+																	WHERE p.id = $paymentID 
+																	AND t.userID = $user
+																	AND tt.key <> 'com';")->fetchAll(PDO::FETCH_COLUMN);
 						if($count > 0){
 							$stmt = $pdo->prepare('UPDATE payment SET active = 0 WHERE id = ?;');
 							$stmt->execute([$paymentID]);

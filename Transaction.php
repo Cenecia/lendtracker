@@ -7,14 +7,7 @@
 			$typeid = $pdo->query("SELECT id FROM transactionType WHERE name = '$type'")->fetchAll(PDO::FETCH_COLUMN);
 			return $typeid[0];
 		}
-    
-		private function getTransactionTypeKey($transactionID)
-		{
-			$pdo = getPdo();
-			$key = $pdo->query("SELECT `key` FROM transaction t JOIN transactionType tt ON t.transactionTypeID = tt.id WHERE t.id = $transactionID;")->fetchAll(PDO::FETCH_COLUMN);
-			return $key[0];
-		}
-    
+		
 		public function viewTransactions()
 		{
 			if(isset($_POST['username'])) {
