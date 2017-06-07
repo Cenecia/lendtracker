@@ -1,6 +1,6 @@
 <?php 
 
-include('dbinfo.php');
+include('keys.php');
 
 function getPdo() {
   $host = DB_HOST;
