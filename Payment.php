@@ -60,7 +60,7 @@
 							$paymentDate = date("Y-m-d", $intDate);
 							$originalPaymentAmt = $pdo->query("SELECT p.amount FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
 							$transactionID = $pdo->query("SELECT p.transactionID FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
-							if($this->getTransactionTypeKey($transactionID[0]) == 'com'){
+							if($this->getTransactionTypeKey($transactionID[0], $user) == 'com'){
 								echo 'this loan is completed';
 								return;
 							}

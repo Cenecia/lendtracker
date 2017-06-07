@@ -4,7 +4,7 @@
 
 	$key = filter_var($_REQUEST["key"], FILTER_SANITIZE_STRING);
 
-	if(isset($_REQUEST["action"]) && $key == "sX216917yESxF6n") {
+	if(isset($_REQUEST["action"]) && $key == APP_KEY) {
 
 		$app = new App;
 
