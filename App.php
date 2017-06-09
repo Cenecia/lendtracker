@@ -76,7 +76,7 @@
 		}
 		
 		public function cancelTransaction(){
-			$transaction = Transaction;
+			$transaction = new Transaction;
 			$transaction->cancelTransaction();
 		}
 		

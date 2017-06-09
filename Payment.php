@@ -64,13 +64,11 @@
 								echo 'this loan is completed';
 								return;
 							}
-							if($amount > $originalPaymentAmt[0]){
-								$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transactionID[0] AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
-								$balance = $remaining[0] - $amount + $originalPaymentAmt[0];
-								if($balance < 0){
-									echo "Payment is more than remaining amount.";
-									return;
-								}
+							$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transactionID[0] AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
+							$balance = $remaining[0] - $amount + $originalPaymentAmt[0];
+							if($balance < 0){
+								echo "Payment is more than remaining amount.";
+								return;
 							}
  							$stmt = $pdo->prepare('UPDATE payment SET amount = ?, createDate = ? WHERE id = ?;');
  							$stmt->execute([$amount, $paymentDate, $paymentID]);

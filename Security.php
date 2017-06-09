@@ -42,7 +42,7 @@
     }
     
     static public function sendEmail($to,$subj,$msg){
-      $headers = "From: noreply@chrismcbride.ca";
+      $headers = "From: noreply@lendtrackerapp.com";
 
       mail($to,$subj,$msg,$headers);
     }
