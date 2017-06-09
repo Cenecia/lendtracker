@@ -56,8 +56,7 @@
 								echo "invalid amount";
 								return;
 							}
-							$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
-							$paymentDate = date("Y-m-d", $intDate);
+							$paymentDate = date("Y-m-d", $_POST['date']);
 							$originalPaymentAmt = $pdo->query("SELECT p.amount FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
 							$transactionID = $pdo->query("SELECT p.transactionID FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
 							if($this->getTransactionTypeKey($transactionID[0], $user) == 'com'){
@@ -110,8 +109,7 @@
 							echo 'this loan is completed';
 							return;
 						}
-						$intDate = strtotime("+1 day", $_POST['date']);//HAX -- For some reason it saves as a day before passed in date. Probably timezone related.
-						$paymentDate = date("Y-m-d", $intDate);
+						$paymentDate = date("Y-m-d", $_POST['date']);
 						$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transaction AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
 						if(!$remaining[0]){
 							$remaining = $pdo->query("SELECT amount FROM transaction WHERE id = $transaction AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
