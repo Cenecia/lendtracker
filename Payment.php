@@ -8,8 +8,9 @@
 													FROM transaction t 
 													JOIN transactionType tt ON t.transactionTypeID = tt.id 
 													WHERE t.id = $transactionID 
-													AND t.userID = $userid;")->fetchAll(PDO::FETCH_COLUMN);
-			return $key[0];
+													AND t.userID = $userid;"
+												)->fetch(PDO::FETCH_COLUMN);
+			return $key;
 		}
 		
 		public function getPayment()
@@ -17,14 +18,21 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if($userid[0] > 0) {
-					$user = $userid[0];
+				$user = new User;
+				$userid = $user->getUserIdByUsername($username);
+				if($userid) {
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					
-					if(Security::checkToken($user, $token)) {
+					if(Security::checkToken($userid, $token)) {
 						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
-						$payment = $pdo->query("SELECT t.id as transactionID, t.amount as transactionAmount, p.amount as paymentAmount, p.createDate, t.description FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.userID = $user AND p.id = $paymentID;")->fetchAll();
+						$payment = $pdo->query("SELECT t.id as transactionID, 
+																		t.amount as transactionAmount, 
+																		p.amount as paymentAmount, 
+																		p.createDate, 
+																		t.description 
+																		FROM transaction t 
+																		JOIN payment p ON p.transactionID = t.id WHERE t.userID = $userid AND p.id = $paymentID;"
+																	)->fetch(PDO::FETCH_OBJ);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem getting data.";
@@ -43,13 +51,17 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if($userid[0] > 0) {
-					$user = $userid[0];
+				$user = new User;
+				$userid = $user->getUserIdByUsername($username);
+				if($userid) {
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					if(Security::checkToken($user, $token)) {
+					if(Security::checkToken($userid, $token)) {
 						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
-						$count = $pdo->query("SELECT COUNT(p.id) FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND t.userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						$count = $pdo->query("SELECT COUNT(p.id) 
+																	FROM payment p 
+																	JOIN transaction t ON p.transactionID = t.id 
+																	WHERE p.id = $paymentID AND t.userID = $userid;"
+																)->fetch(PDO::FETCH_COLUMN);
 						if($count > 0){
 							$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 							if($amount <= 0){
@@ -57,14 +69,28 @@
 								return;
 							}
 							$paymentDate = date("Y-m-d", $_POST['date']);
-							$originalPaymentAmt = $pdo->query("SELECT p.amount FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
-							$transactionID = $pdo->query("SELECT p.transactionID FROM payment p JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
-							if($this->getTransactionTypeKey($transactionID[0], $user) == 'com'){
+							$originalPaymentAmt = $pdo->query("SELECT p.amount 
+																								 FROM payment p 
+																								 JOIN transaction t ON p.transactionID = t.id 
+																								 WHERE p.id = $paymentID AND userID = $userid;"
+																							 )->fetch(PDO::FETCH_COLUMN);
+							$transactionID = $pdo->query("SELECT p.transactionID 
+																						FROM payment p 
+																						JOIN transaction t ON p.transactionID = t.id WHERE p.id = $paymentID 
+																						AND userID = $userid;"
+																					)->fetch(PDO::FETCH_COLUMN);
+							if($this->getTransactionTypeKey($transactionID, $userid) == 'com'){
 								echo 'this loan is completed';
 								return;
 							}
-							$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transactionID[0] AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
-							$balance = $remaining[0] - $amount + $originalPaymentAmt[0];
+							$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' 
+																				FROM transaction t 
+																				JOIN payment p ON p.transactionID = t.id 
+																				WHERE t.id = $transactionID
+																				AND userID = $userid 
+																				AND p.active = 1;"
+																			)->fetch(PDO::FETCH_COLUMN);
+							$balance = $remaining - $amount + $originalPaymentAmt;
 							if($balance < 0){
 								echo "Payment is more than remaining amount.";
 								return;
@@ -94,27 +120,37 @@
 			if(isset($_POST['token'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if($userid[0] > 0) {
-					$user = $userid[0];
+				$user = new User;
+				$userid = $user->getUserIdByUsername($username);
+				if($userid) {
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					if(Security::checkToken($user, $token)) {
+					if(Security::checkToken($userid, $token)) {
 						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
 						if($amount <= 0){
 							echo "invalid amount";
 							return;
 						}
 						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
-						if($this->getTransactionTypeKey($transaction, $user) == 'com'){
+						if($this->getTransactionTypeKey($transaction, $userid) == 'com'){
 							echo 'this loan is completed';
 							return;
 						}
 						$paymentDate = date("Y-m-d", $_POST['date']);
-						$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' FROM transaction t JOIN payment p ON p.transactionID = t.id WHERE t.id = $transaction AND userID = $user AND p.active = 1;")->fetchAll(PDO::FETCH_COLUMN);
-						if(!$remaining[0]){
-							$remaining = $pdo->query("SELECT amount FROM transaction WHERE id = $transaction AND userID = $user;")->fetchAll(PDO::FETCH_COLUMN);
+						$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' 
+																			FROM transaction t 
+																			JOIN payment p ON p.transactionID = t.id 
+																			WHERE t.id = $transaction 
+																			AND userID = $userid 
+																			AND p.active = 1;"
+																		)->fetch(PDO::FETCH_COLUMN);
+						if(!$remaining){
+							$remaining = $pdo->query("SELECT amount 
+																				FROM transaction 
+																				WHERE id = $transaction 
+																				AND userID = $userid;"
+																			)->fetch(PDO::FETCH_COLUMN);
 						}
-						$balance = $remaining[0] - $amount;
+						$balance = $remaining - $amount;
 						if($balance < 0){
 							echo "Payment is more than remaining amount.";
 							return;
@@ -148,18 +184,18 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if($userid[0] > 0) {
-					$user = $userid[0];
+				$user = new User;
+				$userid = $user->getUserIdByUsername($username);
+				if($userid) {
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
-					if(Security::checkToken($user, $token)) {
+					if(Security::checkToken($userid, $token)) {
 						$paymentID = filter_var($_POST['paymentID'], FILTER_VALIDATE_INT);
 						$count = $pdo->query("SELECT COUNT(p.id) 
 																	FROM payment p 
 																	JOIN transaction t ON p.transactionID = t.id 
 																	JOIN transactionType tt ON t.transactionTypeID = tt.id
 																	WHERE p.id = $paymentID 
-																	AND t.userID = $user
+																	AND t.userID = $userid
 																	AND tt.key <> 'com';")->fetchAll(PDO::FETCH_COLUMN);
 						if($count > 0){
 							$stmt = $pdo->prepare('UPDATE payment SET active = 0 WHERE id = ?;');

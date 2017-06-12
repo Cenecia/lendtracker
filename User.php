@@ -5,12 +5,11 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if(isset($userid[0]) && $userid[0] > 0) {
-					$user = $userid[0];
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetch(PDO::FETCH_COLUMN);
+				if($userid) {
 					$password = filter_var($_POST["password"], FILTER_SANITIZE_STRING);
-					if(Security::checkLogin($user, $password)) {
-						echo Security::newToken($user, $password);
+					if(Security::checkLogin($userid, $password)) {
+						echo Security::newToken($userid, $password);
 						return;
 					}
 				}
@@ -28,8 +27,8 @@
 					return;
 				}
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if(count($userid) > 0){
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetch(PDO::FETCH_COLUMN);
+				if($userid){
 					echo "Username already exists";
 					return;
 				}
@@ -60,14 +59,13 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_VALIDATE_EMAIL);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if(isset($userid[0]) && $userid[0] > 0) {
-					$user = $userid[0];
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetch(PDO::FETCH_COLUMN);
+				if($userid) {
 					$randomPassword = Security::randomStr();
 					$pwsalt = password_hash(Security::randomStr(), PASSWORD_DEFAULT);
 					$newPassword = password_hash($pwsalt.$randomPassword, PASSWORD_DEFAULT);
 					$stmt = $pdo->prepare('UPDATE user SET password = ?, pwsalt = ? WHERE id = ?;');
-					$stmt->execute([$newPassword, $pwsalt, $user]);
+					$stmt->execute([$newPassword, $pwsalt, $userid]);
 					$error = $pdo->errorInfo();
 					if($error[0] != 0){
 						echo "There was a problem restting password.";
@@ -88,11 +86,10 @@
 			if(isset($_POST['username'])) {
 				$username = filter_var($_POST["username"], FILTER_SANITIZE_STRING);
 				$pdo = getPdo();
-				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetchAll(PDO::FETCH_COLUMN);
-				if(isset($userid[0]) && $userid[0] > 0) {
-					$user = $userid[0];
+				$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetch(PDO::FETCH_COLUMN);
+				if($userid) {
 					$oldPassword = filter_var($_POST["oldPassword"], FILTER_SANITIZE_STRING);
-					if(Security::checkLogin($user, $oldPassword)) {
+					if(Security::checkLogin($userid, $oldPassword)) {
 						if(strlen($_POST['newPassword']) < 8){
 							echo "Password too short";
 							return;
@@ -104,7 +101,7 @@
 						$pwsalt = password_hash(Security::randomStr(), PASSWORD_DEFAULT);
 						$newPassword = password_hash($pwsalt.$_POST['newPassword'], PASSWORD_DEFAULT);
 						$stmt = $pdo->prepare('UPDATE user SET password = ?, pwsalt = ? WHERE id = ?;');
-						$stmt->execute([$newPassword, $pwsalt, $user]);
+						$stmt->execute([$newPassword, $pwsalt, $userid]);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem restting password.";
@@ -116,5 +113,11 @@
 				}
 			}
 			echo "Old password was incorrect. Please retry.";
-		}    
+		}
+		
+		public function getUserIdByUsername($username){
+			$pdo = getPdo();
+			$userid = $pdo->query("SELECT id FROM user WHERE username = '$username'")->fetch(PDO::FETCH_COLUMN);
+			return $userid;
+		}
   }
