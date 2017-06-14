@@ -14,12 +14,14 @@
     static public function checkToken($user, $token)
     {
       $pdo = getPdo();
-      $stmt = $pdo->query("SELECT token, tokensalt, tokenexpire FROM user WHERE id = $user");
+      $stmt = $pdo->prepare("SELECT token, tokensalt, tokenexpire FROM user WHERE id = ?");
+      $stmt->execute([$user]);
       foreach ($stmt as $row)
       {
         $now = new datetime(date("Y-m-d H:i:s"));
         $expires = new datetime($row['tokenexpire']);
         if(($expires > $now) && password_verify($token.$row['tokensalt'], $row['token'])){
+          self::renewToken($user);
           return true;
         }
       }
@@ -60,5 +62,15 @@
           $data[8] = chr(ord($data[8]) & 0x3f | 0x80);    // set bits 6-7 to 10
           return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
       }
+    }
+    
+    private function renewToken($userid)
+    {
+        $pdo = getPdo();
+        $expire = new datetime(date("Y-m-d H:i:s"));
+        $expire->add(new DateInterval('PT1H'));
+        $data['date'] = $expire->format("Y-m-d H:i:s");
+        $stmt = $pdo->prepare("UPDATE user SET tokenexpire = ? WHERE id = ?;");
+        $stmt->execute([$expire->format("Y-m-d H:i:s"),$userid]);
     }
   }
