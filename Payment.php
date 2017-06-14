@@ -63,7 +63,8 @@
 																	WHERE p.id = $paymentID AND t.userID = $userid;"
 																)->fetch(PDO::FETCH_COLUMN);
 						if($count > 0){
-							$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+							$amount = filter_var($_POST['amount'], FILTER_VALIDATE_FLOAT);
+							$amount = number_format((float)$amount, 2, '.', '');
 							if($amount <= 0){
 								echo "invalid amount";
 								return;
@@ -125,7 +126,8 @@
 				if($userid) {
 					$token = filter_var($_POST["token"], FILTER_SANITIZE_STRING);
 					if(Security::checkToken($userid, $token)) {
-						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_FLOAT);
+						$amount = number_format((float)$amount, 2, '.', '');
 						if($amount <= 0){
 							echo "invalid amount";
 							return;

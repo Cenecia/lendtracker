@@ -91,7 +91,8 @@
 							echo "recipient cannot be blank";
 							return;
 						}
-						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_INT);
+						$amount = filter_var($_POST['amount'], FILTER_VALIDATE_FLOAT);
+						$amount = number_format((float)$amount, 2, '.', '');
 						if($amount <= 0 || $amount >= 1000000){
 							echo "invalid amount";
 							return;
