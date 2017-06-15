@@ -1,7 +1,7 @@
 <?php
   class Transaction
 	{
-		private function getTransactionTypeId($type)
+		public function getTransactionTypeId($type)
 		{
 			$pdo = getPdo();
 			$typeid = $pdo->query("SELECT id FROM transactionType WHERE name = '$type'")->fetch(PDO::FETCH_COLUMN);

@@ -132,8 +132,8 @@
 							echo "invalid amount";
 							return;
 						}
-						$transaction = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
-						if($this->getTransactionTypeKey($transaction, $userid) == 'com'){
+						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
+						if($this->getTransactionTypeKey($transactionID, $userid) == 'com'){
 							echo 'this loan is completed';
 							return;
 						}
@@ -141,14 +141,14 @@
 						$remaining = $pdo->query("SELECT t.amount - SUM(p.amount) as 'total' 
 																			FROM transaction t 
 																			JOIN payment p ON p.transactionID = t.id 
-																			WHERE t.id = $transaction 
+																			WHERE t.id = $transactionID 
 																			AND userID = $userid 
 																			AND p.active = 1;"
 																		)->fetch(PDO::FETCH_COLUMN);
 						if(!$remaining){
 							$remaining = $pdo->query("SELECT amount 
 																				FROM transaction 
-																				WHERE id = $transaction 
+																				WHERE id = $transactionID 
 																				AND userID = $userid;"
 																			)->fetch(PDO::FETCH_COLUMN);
 						}
@@ -163,16 +163,17 @@
 							return;
 						}
 						$stmt = $pdo->prepare('INSERT INTO payment (transactionID, amount, createDate) VALUES (?,?,?);');
-						$stmt->execute([$transaction, $amount, $paymentDate]);
+						$stmt->execute([$transactionID, $amount, $paymentDate]);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem saving this payment.";
 							return;
 						}
 						if($balance == 0){
-							$completedID = $this->getTransactionTypeId("Completed");
+							$transaction = new Transaction;
+							$completedID = $transaction->getTransactionTypeId("Completed");
 							$stmt = $pdo->prepare('UPDATE transaction SET transactionTypeID = ? WHERE id = ?;');
-							$stmt->execute([$completedID, $transaction]);
+							$stmt->execute([$completedID, $transactionID]);
 						}
 						echo "1";
 						return;
