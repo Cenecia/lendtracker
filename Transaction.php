@@ -28,7 +28,7 @@
 																		amount, 
 																		createDate, 
 																		confirmed, 
-																		loanedToName, 
+																		recipientName, 
 																		description 
 																	FROM transaction t 
 																	JOIN transactionType tt ON t.transactionTypeID = tt.id 
@@ -99,7 +99,7 @@
 						}
 						$description = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
 						$transactionType = filter_var($_POST['transactionType'], FILTER_VALIDATE_INT);
-						$stmt = $pdo->prepare('INSERT INTO transaction (transactionTypeID, description, amount, userID, loanedToName, confirmed, createDate) VALUES (?,?,?,?,?,?, NOW());');
+						$stmt = $pdo->prepare('INSERT INTO transaction (transactionTypeID, description, amount, userID, recipientName, confirmed, createDate) VALUES (?,?,?,?,?,?, NOW());');
 						$stmt->execute([$transactionType, $description, $amount, $lender, $recipient, 1]);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
@@ -126,7 +126,7 @@
 					
 					if(Security::checkToken($userid, $token)) {
 						$transactionID = filter_var($_POST['transactionID'], FILTER_VALIDATE_INT);
-						$loan = $pdo->query("SELECT id, amount, createDate, confirmed, loanedToName, description FROM transaction WHERE userID = $userid AND id = $transactionID;")->fetch(PDO::FETCH_OBJ);
+						$loan = $pdo->query("SELECT id, amount, createDate, confirmed, recipientName, description FROM transaction WHERE userID = $userid AND id = $transactionID;")->fetch(PDO::FETCH_OBJ);
 						$error = $pdo->errorInfo();
 						if($error[0] != 0){
 							echo "There was a problem getting transaction.";
